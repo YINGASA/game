@@ -21,56 +21,60 @@
         </div>
       </header>
 
-      <section class="hud" aria-label="游戏状态">
-        <div>
-          <span class="label">分数</span>
-          <strong id="score">0</strong>
-        </div>
-        <div>
-          <span class="label">最佳</span>
-          <strong id="best">0</strong>
-        </div>
-        <div>
-          <span class="label">连击</span>
-          <strong id="combo">0</strong>
-        </div>
-        <div>
-          <span class="label">速度</span>
-          <strong id="speed">1x</strong>
-        </div>
-      </section>
-
-      <section class="settings" aria-label="游戏设置">
-        <div class="segmented" role="group" aria-label="难度">
-          <button class="is-active" data-difficulty="easy" type="button">休闲</button>
-          <button data-difficulty="normal" type="button">标准</button>
-          <button data-difficulty="hard" type="button">高手</button>
-        </div>
-        <div class="segmented" role="group" aria-label="模式">
-          <button class="is-active" data-mode="wall" type="button">边界</button>
-          <button data-mode="wrap" type="button">穿墙</button>
-        </div>
-      </section>
-
-      <section class="profile-board" aria-label="排行榜">
-        <section class="leaderboard" aria-label="排行榜">
-          <div class="leaderboard-head">
-            <h2>排行榜</h2>
-            <span id="leaderboardStatus">本地</span>
+      <div class="game-layout">
+        <section class="play-area" aria-label="贪吃蛇棋盘">
+          <canvas id="board" width="720" height="720"></canvas>
+          <div class="flash" id="flash" aria-hidden="true"></div>
+          <div class="overlay is-visible" id="overlay">
+            <h2 id="overlayTitle">贪吃蛇</h2>
+            <p id="message">按空格开始</p>
+            <button id="startButton" type="button">开始游戏</button>
           </div>
-          <ol id="leaderboardList"></ol>
         </section>
-      </section>
 
-      <section class="play-area" aria-label="贪吃蛇棋盘">
-        <canvas id="board" width="720" height="720"></canvas>
-        <div class="flash" id="flash" aria-hidden="true"></div>
-        <div class="overlay is-visible" id="overlay">
-          <h2 id="overlayTitle">贪吃蛇</h2>
-          <p id="message">按空格开始</p>
-          <button id="startButton" type="button">开始游戏</button>
-        </div>
-      </section>
+        <aside class="side-panel" aria-label="游戏信息">
+          <section class="hud" aria-label="游戏状态">
+            <div>
+              <span class="label">分数</span>
+              <strong id="score">0</strong>
+            </div>
+            <div>
+              <span class="label">最佳</span>
+              <strong id="best">0</strong>
+            </div>
+            <div>
+              <span class="label">连击</span>
+              <strong id="combo">0</strong>
+            </div>
+            <div>
+              <span class="label">速度</span>
+              <strong id="speed">1x</strong>
+            </div>
+          </section>
+
+          <section class="settings" aria-label="游戏设置">
+            <div class="segmented" role="group" aria-label="难度">
+              <button class="is-active" data-difficulty="easy" type="button">休闲</button>
+              <button data-difficulty="normal" type="button">标准</button>
+              <button data-difficulty="hard" type="button">高手</button>
+            </div>
+            <div class="segmented" role="group" aria-label="模式">
+              <button class="is-active" data-mode="wall" type="button">边界</button>
+              <button data-mode="wrap" type="button">穿墙</button>
+            </div>
+          </section>
+
+          <section class="profile-board" aria-label="排行榜">
+            <section class="leaderboard" aria-label="排行榜">
+              <div class="leaderboard-head">
+                <h2>排行榜</h2>
+                <span id="leaderboardStatus">本地</span>
+              </div>
+              <ol id="leaderboardList"></ol>
+            </section>
+          </section>
+        </aside>
+      </div>
 
       <section class="controls" aria-label="方向控制">
         <div class="hint">方向键 / WASD / 滑动</div>
