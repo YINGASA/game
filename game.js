@@ -336,6 +336,31 @@ const drawRoundedCell = (x, y, fill, inset = 2, radius = 8) => {
   ctx.fill();
 };
 
+const drawBeveledCell = (x, y, fill, inset = 2.2, radius = 8, lift = 4) => {
+  const px = x * cellSize + inset;
+  const py = y * cellSize + inset;
+  const size = cellSize - inset * 2;
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0.24)";
+  ctx.beginPath();
+  ctx.roundRect(px + 1.5, py + lift, size, size, radius);
+  ctx.fill();
+
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.roundRect(px, py, size, size, radius);
+  ctx.fill();
+
+  const shine = ctx.createLinearGradient(px, py, px, py + size);
+  shine.addColorStop(0, "rgba(255, 255, 255, 0.22)");
+  shine.addColorStop(0.38, "rgba(255, 255, 255, 0.05)");
+  shine.addColorStop(1, "rgba(0, 0, 0, 0.2)");
+  ctx.fillStyle = shine;
+  ctx.beginPath();
+  ctx.roundRect(px + 1.2, py + 1.2, size - 2.4, size - 2.4, radius - 1);
+  ctx.fill();
+};
+
 const drawBoard = () => {
   const boardGradient = ctx.createLinearGradient(0, 0, 720, 720);
   boardGradient.addColorStop(0, "#111816");
@@ -360,6 +385,18 @@ const drawBoard = () => {
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, 720, 720);
 
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.028)";
+  ctx.lineWidth = 1;
+  for (let y = 0; y < gridSize; y += 1) {
+    for (let x = 0; x < gridSize; x += 1) {
+      if ((x + y) % 4 === 0) {
+        const px = x * cellSize + 4;
+        const py = y * cellSize + 4;
+        ctx.strokeRect(px, py, cellSize - 8, cellSize - 8);
+      }
+    }
+  }
+
   ctx.strokeStyle = colors.grid;
   ctx.lineWidth = 1;
   for (let i = 1; i < gridSize; i += 1) {
@@ -378,6 +415,10 @@ const drawFood = (now) => {
   const centerY = food.y * cellSize + cellSize / 2;
   const pulse = 1 + Math.sin(now / 160) * 0.08;
   const color = food.type === "bonus" ? colors.bonus : colors.food;
+  const core = ctx.createRadialGradient(-5, -7, 2, 0, 0, cellSize * 0.42);
+  core.addColorStop(0, "#fff8d4");
+  core.addColorStop(0.34, color);
+  core.addColorStop(1, food.type === "bonus" ? "#9b7022" : "#8d2f25");
 
   ctx.save();
   ctx.translate(centerX, centerY);
@@ -386,9 +427,20 @@ const drawFood = (now) => {
   ctx.beginPath();
   ctx.arc(0, 0, cellSize * 0.72, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = color;
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
+  ctx.beginPath();
+  ctx.arc(2, cellSize * 0.18, cellSize * 0.36, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = core;
   ctx.beginPath();
   ctx.arc(0, 0, cellSize * 0.34, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.72)";
+  ctx.beginPath();
+  ctx.arc(-cellSize * 0.12, -cellSize * 0.13, cellSize * 0.08, 0, Math.PI * 2);
   ctx.fill();
 
   if (food.type === "bonus") {
@@ -413,14 +465,38 @@ const drawSnake = () => {
       segment.y * cellSize + cellSize,
     );
     gradient.addColorStop(0, colors.snake);
+    gradient.addColorStop(0.45, "#79e46f");
     gradient.addColorStop(1, colors.snakeDark);
     ctx.globalAlpha = 0.66 + fade * 0.34;
-    drawRoundedCell(segment.x, segment.y, gradient, 2.6, 7);
+    drawBeveledCell(segment.x, segment.y, gradient, 2.7, 8, 3);
+
+    ctx.globalAlpha = 0.18 + fade * 0.14;
+    ctx.fillStyle = "#f3ffd9";
+    ctx.beginPath();
+    ctx.roundRect(
+      segment.x * cellSize + cellSize * 0.22,
+      segment.y * cellSize + cellSize * 0.16,
+      cellSize * 0.42,
+      cellSize * 0.12,
+      5,
+    );
+    ctx.fill();
   });
   ctx.globalAlpha = 1;
 
   const head = snake[0];
-  drawRoundedCell(head.x, head.y, colors.head, 1.8, 9);
+  const headGradient = ctx.createRadialGradient(
+    head.x * cellSize + cellSize * 0.32,
+    head.y * cellSize + cellSize * 0.24,
+    2,
+    head.x * cellSize + cellSize / 2,
+    head.y * cellSize + cellSize / 2,
+    cellSize * 0.58,
+  );
+  headGradient.addColorStop(0, "#fbffd5");
+  headGradient.addColorStop(0.45, colors.head);
+  headGradient.addColorStop(1, "#7aa83e");
+  drawBeveledCell(head.x, head.y, headGradient, 1.7, 10, 5);
 
   const eyeOffsetX = direction.x * 4;
   const eyeOffsetY = direction.y * 4;
