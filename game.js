@@ -392,7 +392,17 @@ const upsertCloudProfile = async (username, changedOn = null) => {
 
 const updateCloudScoreNames = async (username) => {
   if (!hasCloudLeaderboard()) return;
-  await fetch(`${SUPABASE_URL}/rest/v1/snake_scores?player_id=eq.${encodeURIComponent(playerId)}`, {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/snake_scores?player_id=eq.${encodeURIComponent(playerId)}`, {
+    method: "PATCH",
+    headers: cloudHeaders(),
+    body: JSON.stringify({ username }),
+  });
+  if (response.ok) return;
+
+  const oldName = localStorage.getItem("snake-previous-player-name");
+  if (!oldName || oldName === username) return;
+
+  await fetch(`${SUPABASE_URL}/rest/v1/snake_scores?username=eq.${encodeURIComponent(oldName)}`, {
     method: "PATCH",
     headers: cloudHeaders(),
     body: JSON.stringify({ username }),
@@ -1039,12 +1049,12 @@ playerForm.addEventListener("submit", (event) => {
       return;
     }
 
+    const previousName = playerName;
+    localStorage.setItem("snake-previous-player-name", previousName);
     setPlayerName(nextName, todayKey());
     submitLocalScore(playerName, best);
-    if (status === "ok") {
-      await updateCloudScoreNames(playerName);
-      await refreshCloudLeaderboard();
-    }
+    await updateCloudScoreNames(playerName);
+    await refreshCloudLeaderboard();
     addFloater(snake[0].x, snake[0].y, "已保存", colors.cyan);
     usernameDialog.close();
   });
