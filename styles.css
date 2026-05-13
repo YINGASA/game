@@ -100,7 +100,7 @@ button:active {
 .game-shell {
   position: relative;
   z-index: 1;
-  width: min(96vw, 1120px);
+  width: min(96vw, 1180px);
   max-height: 100vh;
   display: grid;
   grid-template-rows: auto 1fr auto;
@@ -160,7 +160,7 @@ h1 {
 
 .game-layout {
   display: grid;
-  grid-template-columns: minmax(520px, 1fr) 330px;
+  grid-template-columns: minmax(500px, 0.96fr) 360px;
   gap: 12px;
   align-items: stretch;
   min-height: 0;
@@ -495,7 +495,7 @@ h1 {
 .play-area {
   position: relative;
   width: 100%;
-  height: min(68vh, calc(100vh - 180px));
+  height: min(68vh, calc(100vh - 184px));
   min-height: 460px;
   aspect-ratio: 1;
   overflow: hidden;

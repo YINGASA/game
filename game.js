@@ -144,7 +144,7 @@ const normalizeScoreEntry = (entry) => ({
 const mergeLeaderboardEntries = (...entryGroups) => {
   const merged = new Map();
   entryGroups.flat().map(normalizeScoreEntry).forEach((entry) => {
-    const key = entry.player_id || entry.username;
+    const key = entry.username;
     const current = merged.get(key);
     if (!current || entry.score > current.score) {
       merged.set(key, entry);
