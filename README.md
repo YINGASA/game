@@ -34,39 +34,7 @@ start E:\Codex\game\index.html
 游戏支持玩家名和最高分排行榜。默认情况下排行榜保存在当前浏览器本地；如果要让所有玩家共享同一个线上排行榜，可以接入 Supabase。
 
 1. 在 Supabase 创建项目。
-2. 在 SQL Editor 运行：
-
-```sql
-create table if not exists public.snake_scores (
-  username text primary key,
-  score integer not null default 0,
-  difficulty text not null default 'normal',
-  mode text not null default 'wall',
-  updated_at timestamptz not null default now()
-);
-
-alter table public.snake_scores enable row level security;
-
-create policy "Anyone can read snake scores"
-on public.snake_scores
-for select
-to anon
-using (true);
-
-create policy "Anyone can submit snake scores"
-on public.snake_scores
-for insert
-to anon
-with check (char_length(username) between 1 and 16 and score >= 0);
-
-create policy "Anyone can update snake scores"
-on public.snake_scores
-for update
-to anon
-using (true)
-with check (char_length(username) between 1 and 16 and score >= 0);
-```
-
+2. 在 SQL Editor 运行 `supabase-schema.sql` 里的全部 SQL。
 3. 在 `game.js` 顶部填写：
 
 ```js
@@ -74,4 +42,4 @@ const SUPABASE_URL = "你的 Supabase Project URL";
 const SUPABASE_ANON_KEY = "你的 Supabase anon public key";
 ```
 
-重新提交并推送后，线上网页就会使用云端排行榜。
+重新提交并推送后，线上网页就会使用云端排行榜。当前排行榜按“难度 + 模式”分别统计；玩家首次进入会自动获得 `用户1`、`用户2` 这样的默认名，手动改名每天只能改一次。

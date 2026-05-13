@@ -153,6 +153,7 @@ h1 {
 .top-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 .icon-button {
@@ -162,6 +163,18 @@ h1 {
   place-items: center;
   font-size: 1.12rem;
   backdrop-filter: blur(10px);
+}
+
+.name-button {
+  max-width: 128px;
+  height: 46px;
+  padding: 0 14px;
+  overflow: hidden;
+  color: #101411;
+  background: linear-gradient(135deg, var(--lime), var(--green) 70%, #8ce5ee);
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .icon-button.is-muted {
@@ -238,7 +251,7 @@ h1 {
 
 .profile-board {
   display: grid;
-  grid-template-columns: 0.86fr 1.14fr;
+  grid-template-columns: 1fr;
   gap: 10px;
   padding: 8px;
 }
@@ -317,11 +330,95 @@ h1 {
 
 .leaderboard ol {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 5px;
   min-height: 70px;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.username-dialog {
+  width: min(92vw, 390px);
+  padding: 0;
+  border: 1px solid rgba(238, 244, 233, 0.18);
+  border-radius: 10px;
+  color: var(--text);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 46%),
+    rgba(16, 22, 20, 0.96);
+  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.52);
+}
+
+.username-dialog::backdrop {
+  background: rgba(4, 8, 7, 0.66);
+  backdrop-filter: blur(5px);
+}
+
+.username-modal {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+}
+
+.modal-eyebrow {
+  margin: 0 0 4px;
+  color: var(--cyan);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.username-modal h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.username-modal label {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.username-modal input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(238, 244, 233, 0.18);
+  border-radius: 8px;
+  color: var(--text);
+  background: rgba(7, 11, 10, 0.5);
+  font: inherit;
+  outline: none;
+}
+
+.username-modal input:focus {
+  border-color: rgba(214, 242, 100, 0.68);
+  box-shadow: 0 0 0 3px rgba(214, 242, 100, 0.11);
+}
+
+.username-modal input:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+#usernameHelp {
+  min-height: 1.4em;
+  margin: 0;
+  color: #dbe4d9;
+  font-size: 0.86rem;
+}
+
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.modal-actions button {
+  min-height: 42px;
 }
 
 .leaderboard li {
@@ -572,8 +669,18 @@ canvas {
     align-items: center;
   }
 
+  .top-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
   .icon-button {
     width: 42px;
+    height: 42px;
+  }
+
+  .name-button {
+    max-width: 104px;
     height: 42px;
   }
 
@@ -589,6 +696,10 @@ canvas {
   .settings,
   .profile-board,
   .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .leaderboard ol {
     grid-template-columns: 1fr;
   }
 

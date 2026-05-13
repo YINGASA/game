@@ -14,7 +14,12 @@ const soundButton = document.querySelector("#soundButton");
 const flash = document.querySelector("#flash");
 const playArea = document.querySelector(".play-area");
 const playerForm = document.querySelector("#playerForm");
+const usernameButton = document.querySelector("#usernameButton");
+const usernameDialog = document.querySelector("#usernameDialog");
 const usernameInput = document.querySelector("#usernameInput");
+const usernameHelp = document.querySelector("#usernameHelp");
+const cancelNameButton = document.querySelector("#cancelNameButton");
+const saveNameButton = document.querySelector("#saveNameButton");
 const leaderboardList = document.querySelector("#leaderboardList");
 const leaderboardStatus = document.querySelector("#leaderboardStatus");
 const directionButtons = document.querySelectorAll("[data-dir]");
@@ -65,7 +70,7 @@ let gameOver = false;
 let difficulty = localStorage.getItem("snake-difficulty") || "normal";
 let mode = localStorage.getItem("snake-mode") || "wall";
 let soundEnabled = localStorage.getItem("snake-sound") !== "off";
-let playerName = localStorage.getItem("snake-player-name") || "玩家";
+let playerName = localStorage.getItem("snake-player-name") || "";
 let leaderboard = [];
 let tickTimer = 0;
 let lastFrameTime = 0;
@@ -83,10 +88,22 @@ if (!["wall", "wrap"].includes(mode)) {
 const bestKey = () => `snake-best-${difficulty}-${mode}`;
 const localLeaderboardKey = () => `snake-leaderboard-${difficulty}-${mode}`;
 const hasCloudLeaderboard = () => Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+const todayKey = () => new Date().toISOString().slice(0, 10);
+const playerIdKey = "snake-player-id";
+const playerNameKey = "snake-player-name";
+const playerNameChangedKey = "snake-player-name-changed-on";
+
+const createPlayerId = () => {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  return `player-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+let playerId = localStorage.getItem(playerIdKey) || createPlayerId();
+localStorage.setItem(playerIdKey, playerId);
 
 const sanitizeName = (value) => {
   const cleaned = value.trim().replace(/\s+/g, " ").slice(0, 16);
-  return cleaned || "玩家";
+  return cleaned || playerName || "用户1";
 };
 
 const resizeCanvas = () => {
@@ -110,9 +127,14 @@ const writeLocalLeaderboard = (entries) => {
   localStorage.setItem(localLeaderboardKey(), JSON.stringify(entries.slice(0, 10)));
 };
 
+const updateUsernameButton = () => {
+  usernameButton.textContent = playerName || "用户名";
+  usernameButton.title = `当前用户名：${playerName || "未设置"}`;
+};
+
 const renderLeaderboard = (entries = leaderboard) => {
   leaderboard = [...entries].sort((a, b) => b.score - a.score).slice(0, 10);
-  leaderboardStatus.textContent = hasCloudLeaderboard() ? "云端" : "本地";
+  leaderboardStatus.textContent = `${difficulties[difficulty].label}/${mode === "wrap" ? "穿墙" : "边界"}`;
   leaderboardList.innerHTML = "";
 
   if (leaderboard.length === 0) {
@@ -144,15 +166,17 @@ const refreshLocalLeaderboard = () => {
 
 const submitLocalScore = (username, value) => {
   const entries = readLocalLeaderboard();
-  const existing = entries.find((entry) => entry.username === username);
+  const existing = entries.find((entry) => entry.player_id === playerId);
 
   if (existing) {
+    existing.username = username;
     existing.score = Math.max(existing.score, value);
     existing.difficulty = difficulty;
     existing.mode = mode;
     existing.updated_at = new Date().toISOString();
   } else {
     entries.push({
+      player_id: playerId,
       username,
       score: value,
       difficulty,
@@ -179,8 +203,10 @@ const refreshCloudLeaderboard = async () => {
   }
 
   try {
+    const difficultyQuery = encodeURIComponent(difficulty);
+    const modeQuery = encodeURIComponent(mode);
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/snake_scores?select=username,score,difficulty,mode,updated_at&order=score.desc&limit=10`,
+      `${SUPABASE_URL}/rest/v1/snake_scores?select=username,score,difficulty,mode,updated_at&difficulty=eq.${difficultyQuery}&mode=eq.${modeQuery}&order=score.desc&limit=10`,
       { headers: cloudHeaders() },
     );
     if (!response.ok) throw new Error("leaderboard request failed");
@@ -195,22 +221,25 @@ const submitCloudScore = async (username, value) => {
   if (!hasCloudLeaderboard()) return;
 
   try {
-    const userQuery = encodeURIComponent(username);
+    const playerQuery = encodeURIComponent(playerId);
+    const difficultyQuery = encodeURIComponent(difficulty);
+    const modeQuery = encodeURIComponent(mode);
     const lookup = await fetch(
-      `${SUPABASE_URL}/rest/v1/snake_scores?username=eq.${userQuery}&select=score&limit=1`,
+      `${SUPABASE_URL}/rest/v1/snake_scores?player_id=eq.${playerQuery}&difficulty=eq.${difficultyQuery}&mode=eq.${modeQuery}&select=score&limit=1`,
       { headers: cloudHeaders() },
     );
     const rows = lookup.ok ? await lookup.json() : [];
     const previous = rows[0]?.score || 0;
     if (previous >= value) return;
 
-    await fetch(`${SUPABASE_URL}/rest/v1/snake_scores?on_conflict=username`, {
+    await fetch(`${SUPABASE_URL}/rest/v1/snake_scores?on_conflict=player_id,difficulty,mode`, {
       method: "POST",
       headers: {
         ...cloudHeaders(),
         Prefer: "resolution=merge-duplicates,return=minimal",
       },
       body: JSON.stringify({
+        player_id: playerId,
         username,
         score: value,
         difficulty,
@@ -227,6 +256,119 @@ const submitCloudScore = async (username, value) => {
 const submitScore = async () => {
   submitLocalScore(playerName, score);
   await submitCloudScore(playerName, score);
+};
+
+const getLocalNameChangedOn = () => localStorage.getItem(playerNameChangedKey) || "";
+
+const canChangeNameToday = () => getLocalNameChangedOn() !== todayKey();
+
+const setPlayerName = (name, changedOn = getLocalNameChangedOn()) => {
+  playerName = sanitizeName(name);
+  localStorage.setItem(playerNameKey, playerName);
+  if (changedOn) {
+    localStorage.setItem(playerNameChangedKey, changedOn);
+  }
+  usernameInput.value = playerName;
+  updateUsernameButton();
+};
+
+const getCloudUserCount = async () => {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/snake_profiles?select=player_id`, {
+      method: "HEAD",
+      headers: {
+        ...cloudHeaders(),
+        Prefer: "count=exact",
+      },
+    });
+    const range = response.headers.get("content-range") || "";
+    const total = Number(range.split("/").pop());
+    return Number.isFinite(total) ? total : 0;
+  } catch {
+    return 0;
+  }
+};
+
+const upsertCloudProfile = async (username, changedOn = null) => {
+  if (!hasCloudLeaderboard()) return "ok";
+
+  const body = {
+    player_id: playerId,
+    username,
+    updated_at: new Date().toISOString(),
+  };
+  if (changedOn) {
+    body.username_changed_on = changedOn;
+  }
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/snake_profiles?on_conflict=player_id`, {
+      method: "POST",
+      headers: {
+        ...cloudHeaders(),
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify(body),
+    });
+    if (response.ok) return "ok";
+    return response.status === 409 ? "conflict" : "offline";
+  } catch {
+    return "offline";
+  }
+};
+
+const updateCloudScoreNames = async (username) => {
+  if (!hasCloudLeaderboard()) return;
+  await fetch(`${SUPABASE_URL}/rest/v1/snake_scores?player_id=eq.${encodeURIComponent(playerId)}`, {
+    method: "PATCH",
+    headers: cloudHeaders(),
+    body: JSON.stringify({ username }),
+  });
+};
+
+const createDefaultCloudName = async () => {
+  if (!hasCloudLeaderboard()) return "用户1";
+
+  let nextNumber = (await getCloudUserCount()) + 1;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const candidate = `用户${nextNumber + attempt}`;
+    if ((await upsertCloudProfile(candidate)) === "ok") {
+      return candidate;
+    }
+  }
+  return `用户${Date.now().toString().slice(-5)}`;
+};
+
+const ensurePlayerProfile = async () => {
+  if (playerName) {
+    updateUsernameButton();
+    await upsertCloudProfile(playerName, getLocalNameChangedOn() || null);
+    return;
+  }
+
+  const defaultName = hasCloudLeaderboard() ? await createDefaultCloudName() : "用户1";
+  setPlayerName(defaultName, "");
+  await upsertCloudProfile(defaultName, null);
+  await refreshCloudLeaderboard();
+};
+
+const setNameDialogState = () => {
+  const locked = !canChangeNameToday();
+  usernameInput.value = playerName;
+  usernameInput.disabled = locked;
+  saveNameButton.disabled = locked;
+  usernameHelp.textContent = locked
+    ? "今天已经修改过用户名，明天可以再次修改。"
+    : "每个玩家每天只能修改一次用户名。";
+};
+
+const openNameDialog = () => {
+  setNameDialogState();
+  usernameDialog.showModal();
+  if (!usernameInput.disabled) {
+    usernameInput.focus();
+    usernameInput.select();
+  }
 };
 
 const startState = () => {
@@ -794,10 +936,41 @@ modeButtons.forEach((button) => {
 
 playerForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  playerName = sanitizeName(usernameInput.value);
-  usernameInput.value = playerName;
-  localStorage.setItem("snake-player-name", playerName);
-  addFloater(snake[0].x, snake[0].y, "已保存", colors.cyan);
+  if (!canChangeNameToday()) {
+    setNameDialogState();
+    return;
+  }
+
+  const nextName = sanitizeName(usernameInput.value);
+  if (nextName === playerName) {
+    usernameDialog.close();
+    return;
+  }
+
+  saveNameButton.disabled = true;
+  usernameHelp.textContent = "正在保存...";
+  upsertCloudProfile(nextName, todayKey()).then(async (status) => {
+    if (status === "conflict") {
+      usernameHelp.textContent = "这个用户名已被使用，请换一个。";
+      saveNameButton.disabled = false;
+      return;
+    }
+
+    setPlayerName(nextName, todayKey());
+    submitLocalScore(playerName, best);
+    if (status === "ok") {
+      await updateCloudScoreNames(playerName);
+      await refreshCloudLeaderboard();
+    }
+    addFloater(snake[0].x, snake[0].y, "已保存", colors.cyan);
+    usernameDialog.close();
+  });
+});
+
+usernameButton.addEventListener("click", openNameDialog);
+
+cancelNameButton.addEventListener("click", () => {
+  usernameDialog.close();
 });
 
 playArea.addEventListener("pointerdown", (event) => {
@@ -840,6 +1013,6 @@ window.addEventListener("resize", () => {
 
 resizeCanvas();
 setActiveButtons();
-usernameInput.value = playerName;
+updateUsernameButton();
 startState();
-refreshCloudLeaderboard();
+ensurePlayerProfile().then(refreshCloudLeaderboard);
