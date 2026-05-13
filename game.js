@@ -15,6 +15,7 @@ const flash = document.querySelector("#flash");
 const playArea = document.querySelector(".play-area");
 const directionButtons = document.querySelectorAll("[data-dir]");
 const difficultyButtons = document.querySelectorAll("[data-difficulty]");
+const variantButtons = document.querySelectorAll("[data-variant]");
 const modeButtons = document.querySelectorAll("[data-mode]");
 
 const gridSize = 24;
@@ -41,10 +42,17 @@ const colors = {
   food: "#ef6249",
   bonus: "#f2c35e",
   cyan: "#64c9d8",
+  obstacle: "#31423c",
+  portalA: "#9f8cff",
+  portalB: "#64c9d8",
+  shield: "#86e7ff",
+  slow: "#b89cff",
 };
 
 let snake;
 let food;
+let obstacles;
+let portals;
 let particles;
 let floaters;
 let direction;
@@ -53,10 +61,13 @@ let score;
 let combo;
 let best;
 let foodEaten;
+let shield;
+let slowUntil;
 let running = false;
 let paused = false;
 let gameOver = false;
 let difficulty = localStorage.getItem("snake-difficulty") || "normal";
+let variant = localStorage.getItem("snake-variant") || "classic";
 let mode = localStorage.getItem("snake-mode") || "wall";
 let soundEnabled = localStorage.getItem("snake-sound") !== "off";
 let tickTimer = 0;
@@ -68,11 +79,14 @@ let audioContext = null;
 if (!difficulties[difficulty]) {
   difficulty = "normal";
 }
+if (!["classic", "maze", "portal"].includes(variant)) {
+  variant = "classic";
+}
 if (!["wall", "wrap"].includes(mode)) {
   mode = "wall";
 }
 
-const bestKey = () => `snake-best-${difficulty}-${mode}`;
+const bestKey = () => `snake-best-${difficulty}-${variant}-${mode}`;
 
 const resizeCanvas = () => {
   const ratio = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
@@ -89,6 +103,8 @@ const startState = () => {
     { x: 10, y: 12 },
     { x: 9, y: 12 },
   ];
+  obstacles = [];
+  portals = [];
   particles = [];
   floaters = [];
   direction = directions.right;
@@ -96,11 +112,14 @@ const startState = () => {
   score = 0;
   combo = 0;
   foodEaten = 0;
+  shield = 0;
+  slowUntil = 0;
   best = readBest();
   paused = false;
   gameOver = false;
   tickTimer = 0;
   lastFrameTime = 0;
+  setupVariantObjects();
   food = createFood("normal");
   updateHud();
   draw();
@@ -110,7 +129,7 @@ const updateHud = () => {
   const level = getLevel();
   scoreEl.textContent = score;
   bestEl.textContent = best;
-  comboEl.textContent = combo > 0 ? `${combo}x` : "0";
+  comboEl.textContent = shield > 0 ? `盾${shield}` : combo > 0 ? `${combo}x` : "0";
   speedEl.textContent = `${level + 1}x`;
 };
 
@@ -118,8 +137,22 @@ const getLevel = () => Math.min(9, Math.floor(foodEaten / 4));
 
 const getDelay = () => {
   const config = difficulties[difficulty];
-  return Math.max(config.minDelay, config.baseDelay - getLevel() * config.step);
+  const baseDelay = Math.max(config.minDelay, config.baseDelay - getLevel() * config.step);
+  return performance.now() < slowUntil ? baseDelay + 34 : baseDelay;
 };
+
+const sameCell = (a, b) => a.x === b.x && a.y === b.y;
+
+const isSnakeCell = (cell) => snake.some((segment) => sameCell(segment, cell));
+
+const isObstacleCell = (cell) => obstacles.some((obstacle) => sameCell(obstacle, cell));
+
+const isPortalCell = (cell) => portals.some((portal) => sameCell(portal, cell));
+
+const isFoodCell = (cell) => food && sameCell(food, cell);
+
+const isBlockedCell = (cell) =>
+  isSnakeCell(cell) || isObstacleCell(cell) || isPortalCell(cell) || isFoodCell(cell);
 
 const createFood = (type = "normal") => {
   let spot;
@@ -129,10 +162,60 @@ const createFood = (type = "normal") => {
       y: Math.floor(Math.random() * gridSize),
       type,
       bornAt: performance.now(),
-      ttl: type === "bonus" ? 5200 : Infinity,
+      ttl: type === "normal" ? Infinity : 5200,
     };
-  } while (snake.some((segment) => segment.x === spot.x && segment.y === spot.y));
+  } while (isBlockedCell(spot));
   return spot;
+};
+
+const getSpecialFoodType = () => {
+  if (foodEaten > 0 && foodEaten % 9 === 0) return "shield";
+  if (foodEaten > 0 && foodEaten % 7 === 0) return "slow";
+  if (foodEaten > 0 && foodEaten % 6 === 0) return "bonus";
+  return "normal";
+};
+
+const getRandomFreeCell = (padding = 1) => {
+  let cell;
+  let attempts = 0;
+  do {
+    cell = {
+      x: padding + Math.floor(Math.random() * (gridSize - padding * 2)),
+      y: padding + Math.floor(Math.random() * (gridSize - padding * 2)),
+    };
+    attempts += 1;
+  } while (isBlockedCell(cell) && attempts < 500);
+  return cell;
+};
+
+const setupVariantObjects = () => {
+  if (variant === "maze") {
+    generateObstacles();
+  }
+  if (variant === "portal") {
+    generatePortals();
+  }
+};
+
+const generateObstacles = () => {
+  obstacles = [];
+  const count = 8 + Math.min(10, getLevel() * 2);
+  for (let i = 0; i < count; i += 1) {
+    const cell = getRandomFreeCell(2);
+    if (!isBlockedCell(cell)) {
+      obstacles.push(cell);
+    }
+  }
+};
+
+const generatePortals = () => {
+  portals = [];
+  const first = getRandomFreeCell(3);
+  portals.push(first);
+  const second = getRandomFreeCell(3);
+  if (!sameCell(first, second)) {
+    portals.push(second);
+  }
 };
 
 const setActiveButtons = () => {
@@ -141,6 +224,9 @@ const setActiveButtons = () => {
   });
   modeButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.mode === mode);
+  });
+  variantButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.variant === variant);
   });
   soundButton.classList.toggle("is-muted", !soundEnabled);
 };
@@ -237,33 +323,81 @@ const update = (now) => {
     head.y = wrap(head.y);
   }
 
+  if (variant === "portal" && portals.length === 2) {
+    if (sameCell(head, portals[0])) {
+      head.x = portals[1].x;
+      head.y = portals[1].y;
+      addFloater(head.x, head.y, "WARP", colors.portalA);
+      playSound(740, 0.06, "sine");
+    } else if (sameCell(head, portals[1])) {
+      head.x = portals[0].x;
+      head.y = portals[0].y;
+      addFloater(head.x, head.y, "WARP", colors.portalB);
+      playSound(740, 0.06, "sine");
+    }
+  }
+
   const hitWall = mode === "wall" && (head.x < 0 || head.y < 0 || head.x >= gridSize || head.y >= gridSize);
   const hitSelf = snake
     .slice(0, -1)
     .some((segment) => segment.x === head.x && segment.y === head.y);
-  if (hitWall || hitSelf) {
+  const hitObstacle = isObstacleCell(head);
+  if ((hitSelf || hitObstacle) && shield > 0) {
+    shield -= 1;
+    combo = 0;
+    addFloater(snake[0].x, snake[0].y, "SHIELD", colors.shield);
+    burst(snake[0].x, snake[0].y, colors.shield, 10);
+    playSound(300, 0.09, "triangle");
+    updateHud();
+    return;
+  }
+
+  if (hitWall || hitSelf || hitObstacle) {
     endGame();
     return;
   }
 
   snake.unshift(head);
   if (head.x === food.x && head.y === food.y) {
-    const isBonus = food.type === "bonus";
-    const points = isBonus ? 5 : 1;
+    const foodType = food.type;
+    const isBonus = foodType === "bonus";
+    const isShield = foodType === "shield";
+    const isSlow = foodType === "slow";
+    const points = isBonus ? 5 : isShield || isSlow ? 3 : 1;
     score += points;
     combo = isBonus ? combo + 2 : combo + 1;
     foodEaten += 1;
-    burst(food.x, food.y, isBonus ? colors.bonus : colors.food, isBonus ? 12 : 7);
-    addFloater(food.x, food.y, isBonus ? "+5" : "+1", isBonus ? colors.bonus : "#f2f7ed");
-    pulseBoard(isBonus);
-    playSound(isBonus ? 620 : 420, 0.08, "triangle");
-    food = createFood(foodEaten % 6 === 0 ? "bonus" : "normal");
+
+    if (isShield) {
+      shield = Math.min(3, shield + 1);
+      addFloater(food.x, food.y, "盾+1", colors.shield);
+    } else if (isSlow) {
+      slowUntil = now + 5200;
+      addFloater(food.x, food.y, "SLOW", colors.slow);
+    } else {
+      addFloater(food.x, food.y, isBonus ? "+5" : "+1", isBonus ? colors.bonus : "#f2f7ed");
+    }
+
+    const feedbackColor = isShield ? colors.shield : isSlow ? colors.slow : isBonus ? colors.bonus : colors.food;
+    burst(food.x, food.y, feedbackColor, isBonus || isShield || isSlow ? 12 : 7);
+    pulseBoard(isBonus || isShield || isSlow);
+    playSound(isBonus ? 620 : isShield ? 520 : isSlow ? 360 : 420, 0.08, "triangle");
+
+    if (variant === "maze" && foodEaten > 0 && foodEaten % 5 === 0) {
+      generateObstacles();
+      addFloater(head.x, head.y, "SHIFT", colors.obstacle);
+    }
+    if (variant === "portal" && foodEaten > 0 && foodEaten % 6 === 0) {
+      generatePortals();
+    }
+
+    food = createFood(getSpecialFoodType());
     updateHud();
   } else {
     snake.pop();
   }
 
-  if (food.type === "bonus" && now - food.bornAt > food.ttl) {
+  if (food.type !== "normal" && now - food.bornAt > food.ttl) {
     combo = 0;
     addFloater(food.x, food.y, "MISS", colors.cyan);
     food = createFood("normal");
@@ -377,12 +511,27 @@ const drawFood = (now) => {
   const centerX = food.x * cellSize + cellSize / 2;
   const centerY = food.y * cellSize + cellSize / 2;
   const pulse = 1 + Math.sin(now / 160) * 0.08;
-  const color = food.type === "bonus" ? colors.bonus : colors.food;
+  const color =
+    food.type === "bonus"
+      ? colors.bonus
+      : food.type === "shield"
+        ? colors.shield
+        : food.type === "slow"
+          ? colors.slow
+          : colors.food;
+  const glowColor =
+    food.type === "bonus"
+      ? "rgba(242, 195, 94, 0.22)"
+      : food.type === "shield"
+        ? "rgba(134, 231, 255, 0.22)"
+        : food.type === "slow"
+          ? "rgba(184, 156, 255, 0.22)"
+          : "rgba(239, 98, 73, 0.22)";
 
   ctx.save();
   ctx.translate(centerX, centerY);
   ctx.scale(pulse, pulse);
-  ctx.fillStyle = food.type === "bonus" ? "rgba(242, 195, 94, 0.22)" : "rgba(239, 98, 73, 0.22)";
+  ctx.fillStyle = glowColor;
   ctx.beginPath();
   ctx.arc(0, 0, cellSize * 0.72, 0, Math.PI * 2);
   ctx.fill();
@@ -391,15 +540,65 @@ const drawFood = (now) => {
   ctx.arc(0, 0, cellSize * 0.34, 0, Math.PI * 2);
   ctx.fill();
 
-  if (food.type === "bonus") {
+  if (food.type === "shield") {
+    ctx.strokeStyle = "#102026";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, -cellSize * 0.2);
+    ctx.lineTo(cellSize * 0.18, -cellSize * 0.03);
+    ctx.lineTo(0, cellSize * 0.22);
+    ctx.lineTo(-cellSize * 0.18, -cellSize * 0.03);
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  if (food.type === "bonus" || food.type === "shield" || food.type === "slow") {
     const progress = Math.max(0, 1 - (now - food.bornAt) / food.ttl);
-    ctx.strokeStyle = colors.cyan;
+    ctx.strokeStyle = food.type === "slow" ? colors.slow : colors.cyan;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(0, 0, cellSize * 0.52, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
     ctx.stroke();
   }
   ctx.restore();
+};
+
+const drawObstacles = () => {
+  obstacles.forEach((obstacle) => {
+    const x = obstacle.x * cellSize;
+    const y = obstacle.y * cellSize;
+    const gradient = ctx.createLinearGradient(x, y, x + cellSize, y + cellSize);
+    gradient.addColorStop(0, "#42564e");
+    gradient.addColorStop(1, colors.obstacle);
+    drawRoundedCell(obstacle.x, obstacle.y, gradient, 3, 6);
+    ctx.strokeStyle = "rgba(214, 242, 100, 0.18)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 5, y + 5, cellSize - 10, cellSize - 10);
+  });
+};
+
+const drawPortals = (now) => {
+  portals.forEach((portal, index) => {
+    const centerX = portal.x * cellSize + cellSize / 2;
+    const centerY = portal.y * cellSize + cellSize / 2;
+    const color = index === 0 ? colors.portalA : colors.portalB;
+    const spin = now / 380 + index * Math.PI;
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(spin);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, cellSize * 0.34, cellSize * 0.2, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.rotate(Math.PI / 2);
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, cellSize * 0.3, cellSize * 0.16, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  });
 };
 
 const drawSnake = () => {
@@ -465,6 +664,8 @@ const drawFloaters = () => {
 
 const draw = (now = performance.now()) => {
   drawBoard();
+  drawObstacles();
+  drawPortals(now);
   drawFood(now);
   drawSnake();
   drawParticles();
@@ -555,6 +756,20 @@ difficultyButtons.forEach((button) => {
     localStorage.setItem("snake-difficulty", difficulty);
     setActiveButtons();
     resetToMenu("贪吃蛇", `${difficulties[difficulty].label}难度`);
+  });
+});
+
+variantButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    variant = button.dataset.variant;
+    localStorage.setItem("snake-variant", variant);
+    setActiveButtons();
+    const names = {
+      classic: "经典玩法",
+      maze: "障碍玩法",
+      portal: "传送玩法",
+    };
+    resetToMenu("贪吃蛇", names[variant]);
   });
 });
 
