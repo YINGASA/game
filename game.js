@@ -21,8 +21,8 @@ const directionButtons = document.querySelectorAll("[data-dir]");
 const difficultyButtons = document.querySelectorAll("[data-difficulty]");
 const modeButtons = document.querySelectorAll("[data-mode]");
 
-const SUPABASE_URL = "";
-const SUPABASE_ANON_KEY = "";
+const SUPABASE_URL = "https://zterlgfalawvuiazqmfw.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_QgB1BTD_zOjYOU4qR0B9Wg_YdxeACct";
 const gridSize = 24;
 const cellSize = canvas.width / gridSize;
 const difficulties = {
