@@ -132,8 +132,31 @@ const updateUsernameButton = () => {
   usernameButton.title = `当前用户名：${playerName || "未设置"}`;
 };
 
+const normalizeScoreEntry = (entry) => ({
+  player_id: entry.player_id || entry.username,
+  username: entry.username || "用户",
+  score: Number(entry.score) || 0,
+  difficulty: entry.difficulty || difficulty,
+  mode: entry.mode || mode,
+  updated_at: entry.updated_at || "",
+});
+
+const mergeLeaderboardEntries = (...entryGroups) => {
+  const merged = new Map();
+  entryGroups.flat().map(normalizeScoreEntry).forEach((entry) => {
+    const key = entry.player_id || entry.username;
+    const current = merged.get(key);
+    if (!current || entry.score > current.score) {
+      merged.set(key, entry);
+    } else if (current && entry.username !== current.username && entry.updated_at > current.updated_at) {
+      current.username = entry.username;
+    }
+  });
+  return [...merged.values()].sort((a, b) => b.score - a.score).slice(0, 10);
+};
+
 const renderLeaderboard = (entries = leaderboard) => {
-  leaderboard = [...entries].sort((a, b) => b.score - a.score).slice(0, 10);
+  leaderboard = mergeLeaderboardEntries(entries);
   leaderboardStatus.textContent = `${difficulties[difficulty].label}/${mode === "wrap" ? "穿墙" : "边界"}`;
   leaderboardList.innerHTML = "";
 
@@ -197,8 +220,9 @@ const cloudHeaders = () => ({
 });
 
 const refreshCloudLeaderboard = async () => {
+  const localEntries = readLocalLeaderboard();
   if (!hasCloudLeaderboard()) {
-    refreshLocalLeaderboard();
+    renderLeaderboard(localEntries);
     return;
   }
 
@@ -210,10 +234,10 @@ const refreshCloudLeaderboard = async () => {
       { headers: cloudHeaders() },
     );
     if (!response.ok) throw new Error("leaderboard request failed");
-    renderLeaderboard(await response.json());
+    renderLeaderboard(mergeLeaderboardEntries(await response.json(), localEntries));
   } catch {
     leaderboardStatus.textContent = "离线";
-    refreshLocalLeaderboard();
+    renderLeaderboard(localEntries);
   }
 };
 
@@ -302,8 +326,9 @@ const submitCloudScore = async (username, value) => {
 };
 
 const submitScore = async () => {
-  submitLocalScore(playerName, score);
-  await submitCloudScore(playerName, score);
+  const highScore = Math.max(score, best);
+  submitLocalScore(playerName, highScore);
+  await submitCloudScore(playerName, highScore);
 };
 
 const getLocalNameChangedOn = () => localStorage.getItem(playerNameChangedKey) || "";
