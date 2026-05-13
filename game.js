@@ -217,6 +217,39 @@ const refreshCloudLeaderboard = async () => {
   }
 };
 
+const submitLegacyCloudScore = async (username, value) => {
+  const userQuery = encodeURIComponent(username);
+  const difficultyQuery = encodeURIComponent(difficulty);
+  const modeQuery = encodeURIComponent(mode);
+  const lookup = await fetch(
+    `${SUPABASE_URL}/rest/v1/snake_scores?username=eq.${userQuery}&difficulty=eq.${difficultyQuery}&mode=eq.${modeQuery}&select=score&limit=1`,
+    { headers: cloudHeaders() },
+  );
+  const rows = lookup.ok ? await lookup.json() : [];
+  const previous = rows[0]?.score || 0;
+  if (previous >= value) {
+    await refreshCloudLeaderboard();
+    return;
+  }
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/snake_scores?on_conflict=username`, {
+    method: "POST",
+    headers: {
+      ...cloudHeaders(),
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    },
+    body: JSON.stringify({
+      username,
+      score: value,
+      difficulty,
+      mode,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+  if (!response.ok) throw new Error("legacy score submit failed");
+  await refreshCloudLeaderboard();
+};
+
 const submitCloudScore = async (username, value) => {
   if (!hasCloudLeaderboard()) return;
 
@@ -228,11 +261,18 @@ const submitCloudScore = async (username, value) => {
       `${SUPABASE_URL}/rest/v1/snake_scores?player_id=eq.${playerQuery}&difficulty=eq.${difficultyQuery}&mode=eq.${modeQuery}&select=score&limit=1`,
       { headers: cloudHeaders() },
     );
-    const rows = lookup.ok ? await lookup.json() : [];
+    if (!lookup.ok) {
+      await submitLegacyCloudScore(username, value);
+      return;
+    }
+    const rows = await lookup.json();
     const previous = rows[0]?.score || 0;
-    if (previous >= value) return;
+    if (previous >= value) {
+      await refreshCloudLeaderboard();
+      return;
+    }
 
-    await fetch(`${SUPABASE_URL}/rest/v1/snake_scores?on_conflict=player_id,difficulty,mode`, {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/snake_scores?on_conflict=player_id,difficulty,mode`, {
       method: "POST",
       headers: {
         ...cloudHeaders(),
@@ -247,9 +287,17 @@ const submitCloudScore = async (username, value) => {
         updated_at: new Date().toISOString(),
       }),
     });
+    if (!response.ok) {
+      await submitLegacyCloudScore(username, value);
+      return;
+    }
     await refreshCloudLeaderboard();
   } catch {
-    leaderboardStatus.textContent = "离线";
+    try {
+      await submitLegacyCloudScore(username, value);
+    } catch {
+      leaderboardStatus.textContent = "离线";
+    }
   }
 };
 
