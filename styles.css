@@ -177,6 +177,9 @@ h1 {
 
 .hud > div,
 .settings,
+.profile-board,
+.player-card,
+.leaderboard,
 .controls {
   position: relative;
   overflow: hidden;
@@ -192,6 +195,9 @@ h1 {
 
 .hud > div::before,
 .settings::before,
+.profile-board::before,
+.player-card::before,
+.leaderboard::before,
 .controls::before {
   position: absolute;
   inset: 0 auto 0 0;
@@ -228,6 +234,122 @@ h1 {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   padding: 8px;
+}
+
+.profile-board {
+  display: grid;
+  grid-template-columns: 0.86fr 1.14fr;
+  gap: 10px;
+  padding: 8px;
+}
+
+.player-card,
+.leaderboard {
+  padding: 12px 14px;
+}
+
+.player-card {
+  display: grid;
+  gap: 8px;
+}
+
+.player-card label,
+.leaderboard-head h2 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.player-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.player-row input {
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid rgba(238, 244, 233, 0.18);
+  border-radius: 8px;
+  color: var(--text);
+  background: rgba(7, 11, 10, 0.42);
+  font: inherit;
+  outline: none;
+}
+
+.player-row input:focus {
+  border-color: rgba(214, 242, 100, 0.62);
+  box-shadow: 0 0 0 3px rgba(214, 242, 100, 0.1);
+}
+
+.player-row button {
+  min-width: 64px;
+  min-height: 40px;
+  padding: 0 12px;
+}
+
+.leaderboard {
+  display: grid;
+  gap: 8px;
+}
+
+.leaderboard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.leaderboard-head span {
+  min-width: 42px;
+  padding: 3px 8px;
+  border: 1px solid rgba(100, 201, 216, 0.22);
+  border-radius: 999px;
+  color: #b9f3f8;
+  background: rgba(100, 201, 216, 0.08);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-align: center;
+}
+
+.leaderboard ol {
+  display: grid;
+  gap: 5px;
+  min-height: 70px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.leaderboard li {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 26px;
+  color: #dbe4d9;
+  font-size: 0.88rem;
+}
+
+.leaderboard .rank {
+  color: var(--amber);
+  font-weight: 850;
+}
+
+.leaderboard .name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard .score {
+  color: var(--lime);
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
 }
 
 .segmented {
@@ -465,6 +587,7 @@ canvas {
   }
 
   .settings,
+  .profile-board,
   .controls {
     grid-template-columns: 1fr;
   }

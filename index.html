@@ -51,6 +51,23 @@
         </div>
       </section>
 
+      <section class="profile-board" aria-label="玩家和排行榜">
+        <form class="player-card" id="playerForm">
+          <label for="usernameInput">玩家名</label>
+          <div class="player-row">
+            <input id="usernameInput" name="username" maxlength="16" autocomplete="nickname" />
+            <button type="submit">保存</button>
+          </div>
+        </form>
+        <section class="leaderboard" aria-label="排行榜">
+          <div class="leaderboard-head">
+            <h2>排行榜</h2>
+            <span id="leaderboardStatus">本地</span>
+          </div>
+          <ol id="leaderboardList"></ol>
+        </section>
+      </section>
+
       <section class="play-area" aria-label="贪吃蛇棋盘">
         <canvas id="board" width="720" height="720"></canvas>
         <div class="flash" id="flash" aria-hidden="true"></div>

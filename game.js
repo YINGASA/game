@@ -13,10 +13,16 @@ const restartButton = document.querySelector("#restartButton");
 const soundButton = document.querySelector("#soundButton");
 const flash = document.querySelector("#flash");
 const playArea = document.querySelector(".play-area");
+const playerForm = document.querySelector("#playerForm");
+const usernameInput = document.querySelector("#usernameInput");
+const leaderboardList = document.querySelector("#leaderboardList");
+const leaderboardStatus = document.querySelector("#leaderboardStatus");
 const directionButtons = document.querySelectorAll("[data-dir]");
 const difficultyButtons = document.querySelectorAll("[data-difficulty]");
 const modeButtons = document.querySelectorAll("[data-mode]");
 
+const SUPABASE_URL = "";
+const SUPABASE_ANON_KEY = "";
 const gridSize = 24;
 const cellSize = canvas.width / gridSize;
 const difficulties = {
@@ -59,6 +65,8 @@ let gameOver = false;
 let difficulty = localStorage.getItem("snake-difficulty") || "normal";
 let mode = localStorage.getItem("snake-mode") || "wall";
 let soundEnabled = localStorage.getItem("snake-sound") !== "off";
+let playerName = localStorage.getItem("snake-player-name") || "玩家";
+let leaderboard = [];
 let tickTimer = 0;
 let lastFrameTime = 0;
 let frameId = 0;
@@ -73,6 +81,13 @@ if (!["wall", "wrap"].includes(mode)) {
 }
 
 const bestKey = () => `snake-best-${difficulty}-${mode}`;
+const localLeaderboardKey = () => `snake-leaderboard-${difficulty}-${mode}`;
+const hasCloudLeaderboard = () => Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+const sanitizeName = (value) => {
+  const cleaned = value.trim().replace(/\s+/g, " ").slice(0, 16);
+  return cleaned || "玩家";
+};
 
 const resizeCanvas = () => {
   const ratio = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
@@ -82,6 +97,137 @@ const resizeCanvas = () => {
 };
 
 const readBest = () => Number(localStorage.getItem(bestKey()) || 0);
+
+const readLocalLeaderboard = () => {
+  try {
+    return JSON.parse(localStorage.getItem(localLeaderboardKey()) || "[]");
+  } catch {
+    return [];
+  }
+};
+
+const writeLocalLeaderboard = (entries) => {
+  localStorage.setItem(localLeaderboardKey(), JSON.stringify(entries.slice(0, 10)));
+};
+
+const renderLeaderboard = (entries = leaderboard) => {
+  leaderboard = [...entries].sort((a, b) => b.score - a.score).slice(0, 10);
+  leaderboardStatus.textContent = hasCloudLeaderboard() ? "云端" : "本地";
+  leaderboardList.innerHTML = "";
+
+  if (leaderboard.length === 0) {
+    const empty = document.createElement("li");
+    empty.innerHTML = '<span class="rank">--</span><span class="name">暂无成绩</span><span class="score">0</span>';
+    leaderboardList.appendChild(empty);
+    return;
+  }
+
+  leaderboard.forEach((entry, index) => {
+    const item = document.createElement("li");
+    const rank = document.createElement("span");
+    const name = document.createElement("span");
+    const value = document.createElement("span");
+    rank.className = "rank";
+    name.className = "name";
+    value.className = "score";
+    rank.textContent = `#${index + 1}`;
+    name.textContent = entry.username;
+    value.textContent = entry.score;
+    item.append(rank, name, value);
+    leaderboardList.appendChild(item);
+  });
+};
+
+const refreshLocalLeaderboard = () => {
+  renderLeaderboard(readLocalLeaderboard());
+};
+
+const submitLocalScore = (username, value) => {
+  const entries = readLocalLeaderboard();
+  const existing = entries.find((entry) => entry.username === username);
+
+  if (existing) {
+    existing.score = Math.max(existing.score, value);
+    existing.difficulty = difficulty;
+    existing.mode = mode;
+    existing.updated_at = new Date().toISOString();
+  } else {
+    entries.push({
+      username,
+      score: value,
+      difficulty,
+      mode,
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  entries.sort((a, b) => b.score - a.score);
+  writeLocalLeaderboard(entries);
+  renderLeaderboard(entries);
+};
+
+const cloudHeaders = () => ({
+  apikey: SUPABASE_ANON_KEY,
+  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  "Content-Type": "application/json",
+});
+
+const refreshCloudLeaderboard = async () => {
+  if (!hasCloudLeaderboard()) {
+    refreshLocalLeaderboard();
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/snake_scores?select=username,score,difficulty,mode,updated_at&order=score.desc&limit=10`,
+      { headers: cloudHeaders() },
+    );
+    if (!response.ok) throw new Error("leaderboard request failed");
+    renderLeaderboard(await response.json());
+  } catch {
+    leaderboardStatus.textContent = "离线";
+    refreshLocalLeaderboard();
+  }
+};
+
+const submitCloudScore = async (username, value) => {
+  if (!hasCloudLeaderboard()) return;
+
+  try {
+    const userQuery = encodeURIComponent(username);
+    const lookup = await fetch(
+      `${SUPABASE_URL}/rest/v1/snake_scores?username=eq.${userQuery}&select=score&limit=1`,
+      { headers: cloudHeaders() },
+    );
+    const rows = lookup.ok ? await lookup.json() : [];
+    const previous = rows[0]?.score || 0;
+    if (previous >= value) return;
+
+    await fetch(`${SUPABASE_URL}/rest/v1/snake_scores?on_conflict=username`, {
+      method: "POST",
+      headers: {
+        ...cloudHeaders(),
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify({
+        username,
+        score: value,
+        difficulty,
+        mode,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+    await refreshCloudLeaderboard();
+  } catch {
+    leaderboardStatus.textContent = "离线";
+  }
+};
+
+const submitScore = async () => {
+  submitLocalScore(playerName, score);
+  await submitCloudScore(playerName, score);
+};
 
 const startState = () => {
   snake = [
@@ -219,6 +365,7 @@ const endGame = () => {
   best = Math.max(best, score);
   localStorage.setItem(bestKey(), String(best));
   updateHud();
+  submitScore();
   playSound(120, 0.18, "sawtooth");
   showOverlay("游戏结束", `得分 ${score}，最佳 ${best}`, "再来一局");
 };
@@ -630,6 +777,7 @@ difficultyButtons.forEach((button) => {
     difficulty = button.dataset.difficulty;
     localStorage.setItem("snake-difficulty", difficulty);
     setActiveButtons();
+    refreshCloudLeaderboard();
     resetToMenu("贪吃蛇", `${difficulties[difficulty].label}难度`);
   });
 });
@@ -639,8 +787,17 @@ modeButtons.forEach((button) => {
     mode = button.dataset.mode;
     localStorage.setItem("snake-mode", mode);
     setActiveButtons();
+    refreshCloudLeaderboard();
     resetToMenu("贪吃蛇", mode === "wrap" ? "穿墙模式" : "边界模式");
   });
+});
+
+playerForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  playerName = sanitizeName(usernameInput.value);
+  usernameInput.value = playerName;
+  localStorage.setItem("snake-player-name", playerName);
+  addFloater(snake[0].x, snake[0].y, "已保存", colors.cyan);
 });
 
 playArea.addEventListener("pointerdown", (event) => {
@@ -683,4 +840,6 @@ window.addEventListener("resize", () => {
 
 resizeCanvas();
 setActiveButtons();
+usernameInput.value = playerName;
 startState();
+refreshCloudLeaderboard();
