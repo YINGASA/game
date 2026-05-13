@@ -357,6 +357,7 @@ const setNameDialogState = () => {
   usernameInput.value = playerName;
   usernameInput.disabled = locked;
   saveNameButton.disabled = locked;
+  usernameInput.placeholder = locked ? "今天已不能修改" : "输入 1-16 个字符";
   usernameHelp.textContent = locked
     ? "今天已经修改过用户名，明天可以再次修改。"
     : "每个玩家每天只能修改一次用户名。";
@@ -369,6 +370,11 @@ const openNameDialog = () => {
     usernameInput.focus();
     usernameInput.select();
   }
+};
+
+const isFormTyping = (event) => {
+  const tagName = event.target?.tagName?.toLowerCase();
+  return usernameDialog.open || tagName === "input" || tagName === "textarea" || event.target?.isContentEditable;
 };
 
 const startState = () => {
@@ -887,6 +893,10 @@ const playSound = (frequency, duration, type = "sine") => {
 };
 
 document.addEventListener("keydown", (event) => {
+  if (isFormTyping(event)) {
+    return;
+  }
+
   if (event.code === "Space") {
     event.preventDefault();
     if (running && !gameOver) togglePause();
