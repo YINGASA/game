@@ -14,6 +14,7 @@
   --red: #ef6249;
   --amber: #f2c35e;
   --cyan: #64c9d8;
+  --violet: #a88cff;
 }
 
 * {
@@ -32,10 +33,31 @@ body {
   place-items: center;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at top left, rgba(100, 201, 216, 0.18), transparent 32rem),
-    radial-gradient(circle at bottom right, rgba(239, 98, 73, 0.15), transparent 28rem),
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    radial-gradient(circle at 16% 10%, rgba(100, 201, 216, 0.22), transparent 25rem),
+    radial-gradient(circle at 88% 82%, rgba(239, 98, 73, 0.16), transparent 28rem),
+    radial-gradient(circle at 48% 105%, rgba(214, 242, 100, 0.12), transparent 24rem),
     linear-gradient(145deg, #0f1412, #151817 52%, #101816);
+  background-size:
+    32px 32px,
+    32px 32px,
+    auto,
+    auto,
+    auto,
+    auto;
   color: var(--text);
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(120deg, transparent 0 42%, rgba(255, 255, 255, 0.045) 50%, transparent 58%),
+    radial-gradient(circle at center, transparent 0, rgba(0, 0, 0, 0.36) 72%);
+  mix-blend-mode: screen;
 }
 
 button {
@@ -43,11 +65,15 @@ button {
   font: inherit;
   border: 1px solid var(--line);
   color: var(--text);
-  background: rgba(242, 247, 237, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
+    rgba(242, 247, 237, 0.07);
   border-radius: 8px;
   cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transition:
     transform 120ms ease,
+    box-shadow 120ms ease,
     border-color 120ms ease,
     background 120ms ease;
 }
@@ -56,6 +82,9 @@ button:hover,
 button:focus-visible {
   border-color: rgba(242, 195, 94, 0.78);
   background: rgba(242, 195, 94, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 4px rgba(242, 195, 94, 0.08);
   outline: 2px solid rgba(242, 195, 94, 0.42);
   outline-offset: 2px;
 }
@@ -65,6 +94,8 @@ button:active {
 }
 
 .game-shell {
+  position: relative;
+  z-index: 1;
   width: min(96vw, 760px);
   display: grid;
   gap: 12px;
@@ -80,11 +111,12 @@ button:active {
 
 .eyebrow {
   margin: 0 0 2px;
-  color: var(--cyan);
+  color: #97ecf5;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
+  text-shadow: 0 0 18px rgba(100, 201, 216, 0.42);
 }
 
 h1 {
@@ -92,6 +124,11 @@ h1 {
   font-size: clamp(2rem, 7vw, 4.2rem);
   line-height: 0.95;
   letter-spacing: 0;
+  color: transparent;
+  background: linear-gradient(110deg, #f2f7ed 0%, var(--lime) 42%, #97ecf5 92%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  text-shadow: 0 16px 50px rgba(112, 215, 103, 0.22);
 }
 
 .top-actions {
@@ -105,6 +142,7 @@ h1 {
   display: grid;
   place-items: center;
   font-size: 1.12rem;
+  backdrop-filter: blur(10px);
 }
 
 .icon-button.is-muted {
@@ -121,10 +159,27 @@ h1 {
 .hud > div,
 .settings,
 .controls {
+  position: relative;
+  overflow: hidden;
   border: 1px solid var(--line);
-  background: var(--panel);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 48%),
+    var(--panel);
   border-radius: 8px;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 18px 60px rgba(0, 0, 0, 0.28);
+}
+
+.hud > div::before,
+.settings::before,
+.controls::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  content: "";
+  background: linear-gradient(var(--cyan), var(--lime));
+  opacity: 0.62;
 }
 
 .hud > div {
@@ -138,12 +193,15 @@ h1 {
 .label {
   color: var(--muted);
   font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0;
 }
 
 .hud strong {
   font-size: clamp(1.2rem, 4vw, 2rem);
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 18px rgba(214, 242, 100, 0.16);
 }
 
 .settings {
@@ -166,12 +224,16 @@ h1 {
   padding: 0 10px;
   color: var(--muted);
   white-space: nowrap;
+  background: rgba(255, 255, 255, 0.055);
 }
 
 .segmented button.is-active {
   color: #101411;
   border-color: rgba(214, 242, 100, 0.72);
-  background: linear-gradient(135deg, var(--lime), var(--green));
+  background: linear-gradient(135deg, var(--lime), var(--green) 70%, #8ce5ee);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 10px 26px rgba(112, 215, 103, 0.22);
   font-weight: 800;
 }
 
@@ -180,13 +242,28 @@ h1 {
   width: 100%;
   aspect-ratio: 1;
   overflow: hidden;
-  border: 1px solid rgba(238, 244, 233, 0.18);
+  border: 1px solid rgba(238, 244, 233, 0.2);
   border-radius: 8px;
   background: #111715;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.03),
-    0 24px 90px rgba(0, 0, 0, 0.42);
+    inset 0 0 50px rgba(214, 242, 100, 0.035),
+    0 0 0 1px rgba(112, 215, 103, 0.08),
+    0 28px 110px rgba(0, 0, 0, 0.46),
+    0 0 44px rgba(100, 201, 216, 0.08);
   touch-action: none;
+}
+
+.play-area::before {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  content: "";
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08), transparent 22%, transparent 78%, rgba(255, 255, 255, 0.06)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.16));
 }
 
 canvas {
@@ -198,6 +275,7 @@ canvas {
 .flash {
   position: absolute;
   inset: 0;
+  z-index: 2;
   pointer-events: none;
   opacity: 0;
   background: rgba(214, 242, 100, 0.08);
@@ -214,14 +292,17 @@ canvas {
 .overlay {
   position: absolute;
   inset: 0;
+  z-index: 3;
   display: none;
   place-items: center;
   align-content: center;
   gap: 14px;
   padding: 24px;
   text-align: center;
-  background: rgba(10, 14, 13, 0.72);
-  backdrop-filter: blur(5px);
+  background:
+    radial-gradient(circle at center, rgba(214, 242, 100, 0.11), transparent 18rem),
+    rgba(10, 14, 13, 0.74);
+  backdrop-filter: blur(7px) saturate(1.1);
 }
 
 .overlay.is-visible {
@@ -234,6 +315,11 @@ canvas {
   font-size: clamp(2.25rem, 10vw, 5.4rem);
   line-height: 0.95;
   letter-spacing: 0;
+  color: transparent;
+  background: linear-gradient(120deg, #ffffff, var(--lime) 52%, var(--cyan));
+  -webkit-background-clip: text;
+  background-clip: text;
+  text-shadow: 0 18px 60px rgba(214, 242, 100, 0.18);
 }
 
 .overlay p {
@@ -250,7 +336,10 @@ canvas {
   padding: 0 18px;
   color: #101411;
   border-color: rgba(214, 242, 100, 0.84);
-  background: linear-gradient(135deg, var(--lime), var(--green));
+  background: linear-gradient(135deg, var(--lime), var(--green) 72%, #8ce5ee);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 16px 40px rgba(112, 215, 103, 0.25);
   font-weight: 800;
 }
 
@@ -266,6 +355,7 @@ canvas {
   min-width: 0;
   color: var(--muted);
   font-size: 0.92rem;
+  font-weight: 650;
 }
 
 .dpad {
@@ -281,6 +371,10 @@ canvas {
   width: 48px;
   height: 48px;
   font-weight: 800;
+  color: #dff8dd;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
+    rgba(100, 201, 216, 0.08);
 }
 
 .dpad [data-dir="up"] {

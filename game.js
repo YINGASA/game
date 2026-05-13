@@ -31,9 +31,9 @@ const directions = {
   right: { x: 1, y: 0 },
 };
 const colors = {
-  boardA: "#121917",
-  boardB: "#17211d",
-  grid: "rgba(238, 244, 233, 0.05)",
+  boardA: "#111816",
+  boardB: "#18231f",
+  grid: "rgba(238, 244, 233, 0.06)",
   snake: "#70d767",
   snakeDark: "#42a75b",
   head: "#d6f264",
@@ -337,7 +337,11 @@ const drawRoundedCell = (x, y, fill, inset = 2, radius = 8) => {
 };
 
 const drawBoard = () => {
-  ctx.fillStyle = colors.boardA;
+  const boardGradient = ctx.createLinearGradient(0, 0, 720, 720);
+  boardGradient.addColorStop(0, "#111816");
+  boardGradient.addColorStop(0.54, "#16201d");
+  boardGradient.addColorStop(1, "#101513");
+  ctx.fillStyle = boardGradient;
   ctx.fillRect(0, 0, 720, 720);
 
   for (let y = 0; y < gridSize; y += 1) {
@@ -348,6 +352,13 @@ const drawBoard = () => {
       }
     }
   }
+
+  const glow = ctx.createRadialGradient(360, 360, 60, 360, 360, 430);
+  glow.addColorStop(0, "rgba(214, 242, 100, 0.035)");
+  glow.addColorStop(0.68, "rgba(100, 201, 216, 0.028)");
+  glow.addColorStop(1, "rgba(0, 0, 0, 0.18)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, 720, 720);
 
   ctx.strokeStyle = colors.grid;
   ctx.lineWidth = 1;
