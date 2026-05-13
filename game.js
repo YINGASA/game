@@ -88,7 +88,15 @@ if (!["wall", "wrap"].includes(mode)) {
 const bestKey = () => `snake-best-${difficulty}-${mode}`;
 const localLeaderboardKey = () => `snake-leaderboard-${difficulty}-${mode}`;
 const hasCloudLeaderboard = () => Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
-const todayKey = () => new Date().toISOString().slice(0, 10);
+const todayKey = () => {
+  const formatter = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return formatter.format(new Date()).replaceAll("/", "-");
+};
 const playerIdKey = "snake-player-id";
 const playerNameKey = "snake-player-name";
 const playerNameChangedKey = "snake-player-name-changed-on";
