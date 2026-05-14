@@ -2,6 +2,7 @@ const canvas = document.querySelector("#board");
 const ctx = canvas.getContext("2d");
 const scoreEl = document.querySelector("#score");
 const bestEl = document.querySelector("#best");
+const bestLabelEl = document.querySelector("#bestLabel");
 const comboEl = document.querySelector("#combo");
 const speedEl = document.querySelector("#speed");
 const overlay = document.querySelector("#overlay");
@@ -495,6 +496,7 @@ const updateHud = () => {
   const level = getLevel();
   scoreEl.textContent = score;
   bestEl.textContent = best;
+  bestLabelEl.textContent = `${difficulties[difficulty].label}/${mode === "wrap" ? "穿墙" : "边界"}最佳`;
   comboEl.textContent = combo > 0 ? `${combo}x` : "0";
   speedEl.textContent = `${level + 1}x`;
 };
